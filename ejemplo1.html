@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	
+	<link rel="stylesheet" href="https://npmcdn.com/leaflet@1.0.0-rc.1/dist/leaflet.css" />
+	
+	<link href="http://netdna.bootstrapcdn.com/font-awesome/4.0.0/css/font-awesome.css" rel="stylesheet"/>
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.css" />
+	<link rel="stylesheet" href="posición/dist/L.Control.Locate.min.css" />
+
+	
+	
+	
+
+	<title>Ejemplo 1</title>
+	
+	
+	
+	<style>
+	*{	
+		padding: 0% ;
+		margin: 0% 0%;		
+	}
+	html, body{
+	height:100% ;
+	width:100% vw;
+	}
+	
+	
+	#map{
+
+	width:100%;
+	height:90%;}
+
+	#norte{
+	position:fixed;
+	width:2%;
+	left: 3%;
+	padding: 1.2%;
+	}
+	</style>
+	
+	
+	
+	</head>	
+	<body>
+
+
+			<div id="map" style="z-index:0">
+			
+			</div>
+			<div id="boton">
+			<br>
+				<p align="center">
+				<input type="number" id="radio"></input>
+				<input id="mandar" type="button" value="mandar"></input></p>
+				<div id="contar"></div>
+			</div>
+
+	</body>
+	
+	
+	<script src="https://npmcdn.com/jquery@3.0.0/dist/jquery.min.js"></script>
+	<script src="https://npmcdn.com/leaflet@1.0.0-rc.1/dist/leaflet.js"></script>
+	
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.js"></script>
+	<script src="posición/src/L.Control.Locate.js" ></script>
+
+
+	
+	
+
+
+	<script>
+	
+	
+	
+	var map = L.map('map',
+	{
+		zoom: 10
+	}).setView([3.42335,-76.52086], 12);           ////SE INSERTA UN MAPA EN EL DIV "map" con coordenadas 3.42335,-76.52086
+	
+	
+	var mapabase = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
+		{
+			maxZoom: 15,
+			attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+		});
+
+	
+
+	mapabase.addTo(map);
+	
+
+
+	var posicion = L.control.locate({setView:'false',flyto:'false',drawCircle:'false',showCompass:'true',drawMarker:'false',keepCurrentZoomLevel:'true',locateOptions: {
+               enableHighAccuracy: true}}).addTo(map);
+	
+	
+	
+	var estilo_buffer = 
+		{
+		radius: 8,
+		fillColor: "#ff7800",
+		color: "#000",
+		weight: 1,
+		opacity: 0.1,
+		fillOpacity: 0.3,
+		interactive: true,		
+		};
+		
+	var estilo_hurto = 
+		{
+			radius: 5,
+			fillColor: "#FF0000",
+			color: "#000000",
+			weight: 1,
+			opacity: 1,
+			fillOpacity: 1,
+		};
+		
+		
+		
+	var influencia = L.geoJson();
+	
+	$('#mandar').click(function(){
+	console.log(posicion);
+	var y = posicion._event.latitude.toString();
+	var x = posicion._event.longitude.toString();
+	var radio = $("#radio").val()
+	console.log(y);
+	console.log(x);
+	
+		$.post("base_de_datos/ejemplo1.php",
+				{
+					peticion:'coordenadas',
+					parametros:{	lat:	y, 	lng:x, rad:radio	}
+				},
+				function(data, status){
+					console.log("Datos recibidos: " + data + "\nStatus: " + status);
+					if(status=='success')
+					{
+						dibujarbuffer();		
+						contar_hurtos();
+						hurto_cercano();						
+					}
+				});
+	});
+	
+	
+	function dibujarbuffer(){
+	$.post("base_de_datos/ejemplo1.php",
+				{
+					peticion:'dibujar_buffer',
+					
+				},
+				function(data, status){
+					if(status=='success')
+					{
+					map.removeLayer(influencia); 
+					zona= eval('('+data+')');
+					influencia=L.geoJson(zona,{style:estilo_buffer}).addTo(map);						
+					}
+				});
+	
+	};
+
+	
+	function contar_hurtos(){
+	$.post("base_de_datos/ejemplo1.php",
+				{
+					peticion:'c_hurtos',
+					
+				},
+				function(data, status){
+					if(status=='success')
+					{
+					$('#contar').html('<p align="center">'+"Cantidad de hurtos dentro de la zona: "+data+'</p>')					
+					}
+				});
+	
+	};
+	
+	
+	
+	var hurto = L.geoJson();
+	function hurto_cercano(){
+	$.post("base_de_datos/ejemplo1.php",
+			{
+				peticion: 'dibujar_hurto',
+			},function(data, status, feature)
+			{
+			if(status=='success')
+			{
+				map.removeLayer(hurto); 
+				hurto2= eval('('+data+')');
+				hurto = L.geoJson(hurto2,  {onEachFeature: function (feature, layer) {
+				
+			},pointToLayer:function(feature, latlng) {
+					return L.circleMarker(latlng, estilo_hurto)}}).addTo(map);
+				map.addLayer(hurto); 
+				hurto.addTo( map );
+			}
+		
+		});
+	
+	};
+	
+	
+	
+	
+		
+	
+	</script>
+	
+</html> 
